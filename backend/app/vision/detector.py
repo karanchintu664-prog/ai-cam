@@ -90,57 +90,55 @@ class ObjectDetectionEngine:
 
         # 1. Person Upper-Body / Silhouette Detection
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        _, thresh = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(blur, 25, 255, cv2.THRESH_BINARY)
         person_contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        person_boxes = []
         for cnt in person_contours:
             area = cv2.contourArea(cnt)
-            if (width * height * 0.04) < area < (width * height * 0.85):
+            if (width * height * 0.02) < area < (width * height * 0.90):
                 x, y, w, h = cv2.boundingRect(cnt)
                 aspect_ratio = float(h) / w if w > 0 else 0
-                if 0.6 <= aspect_ratio <= 3.0:
+                if 0.5 <= aspect_ratio <= 3.5:
                     nx1, ny1 = x / width, y / height
                     nx2, ny2 = (x + w) / width, (y + h) / height
-                    person_boxes.append((x, y, x + w, y + h))
                     detections.append({
                         "class_name": "person",
                         "class_id": 0,
-                        "confidence": 0.85,
+                        "confidence": 0.88,
                         "bbox_norm": [round(nx1, 3), round(ny1, 3), round(nx2, 3), round(ny2, 3)],
                         "bbox_px": [x, y, x + w, y + h]
                     })
 
-        # 2. Handheld Phone Detection: High-luminescence or dark rectangular screen quadrilaterals
-        screen_bright = cv2.inRange(gray, 180, 255)
-        edges = cv2.Canny(gray, 50, 150)
+        # 2. Handheld Phone Detection: Screen luminescence + Canny edges + Rectangular contours
+        screen_bright = cv2.inRange(gray, 130, 255)
+        edges = cv2.Canny(gray, 30, 120)
         phone_mask = cv2.bitwise_or(screen_bright, edges)
 
         contours, _ = cv2.findContours(phone_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for cnt in contours:
             area = cv2.contourArea(cnt)
-            # Phones in typical webcam/phone frame occupy 600 - 35000 sq pixels
-            if 600 < area < 35000:
+            # Phones occupy 200 to 45000 sq pixels in 640x360 frame
+            if 200 < area < (width * height * 0.45):
                 x, y, w, h = cv2.boundingRect(cnt)
-                if w > width * 0.6 or h > height * 0.6:
+                if w > width * 0.75 or h > height * 0.75:
                     continue
 
                 aspect_ratio = float(h) / w if w > 0 else 0
-                # Phone screens in portrait or landscape filming posture
-                if 1.1 <= aspect_ratio <= 2.8 or 0.45 <= aspect_ratio <= 0.85:
+                # Phones in portrait (1.0 to 3.5) or landscape filming posture (0.3 to 0.95)
+                if 1.0 <= aspect_ratio <= 3.5 or 0.3 <= aspect_ratio <= 0.95:
                     hull = cv2.convexHull(cnt)
-                    solidity = float(area) / cv2.contourArea(hull) if cv2.contourArea(hull) > 0 else 0
+                    hull_area = cv2.contourArea(hull)
+                    solidity = float(area) / hull_area if hull_area > 0 else 0
                     
-                    # Phones have high geometric solidity (>0.70)
-                    if solidity > 0.70:
+                    if solidity > 0.40:
                         nx1, ny1 = x / width, y / height
                         nx2, ny2 = (x + w) / width, (y + h) / height
 
                         detections.append({
                             "class_name": "cell phone",
                             "class_id": 67,
-                            "confidence": 0.88,
+                            "confidence": 0.92,
                             "bbox_norm": [round(nx1, 3), round(ny1, 3), round(nx2, 3), round(ny2, 3)],
                             "bbox_px": [x, y, x + w, y + h]
                         })
