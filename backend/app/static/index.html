@@ -101,10 +101,9 @@
             <button class="btn-ctrl active" id="btnModeSim" onclick="switchFeedMode('simulator')">Simulator Feed</button>
             <button class="btn-ctrl" id="btnModeWebcam" onclick="switchFeedMode('webcam')">📷 Live Webcam</button>
             <select id="webcamSelect" style="display:none; background:#0f1422; color:#00d7ff; border:1px solid rgba(0,215,255,0.4); padding:5px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;" onchange="changeWebcamSource(this.value)">
-              <option value="server_0" selected>Server Webcam (Index 0)</option>
-              <option value="server_1">Server Webcam (Index 1)</option>
-              <option value="server_2">Server Webcam (Index 2)</option>
-              <option value="browser">In-Browser Webcam</option>
+              <option value="browser" selected>In-Browser Webcam (My Device)</option>
+              <option value="server_0">Server Hardware Webcam (Index 0)</option>
+              <option value="server_1">Server Hardware Webcam (Index 1)</option>
             </select>
             <button class="btn-ctrl" id="btnModeFile" onclick="triggerVideoUpload()">📁 Upload Video</button>
             <button class="btn-ctrl" id="btnModePhone" onclick="openPhoneCameraModal()">📱 Phone Camera Streamer</button>
