@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Camera & Webcam Ingest Feed | AI Cinema Anti-Piracy</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #07090e;
+      color: #f0f4fc;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 640px;
+      text-align: center;
+      padding: 14px;
+      background: rgba(14, 19, 31, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      background: linear-gradient(90deg, #00d7ff, #ffffff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    p.subtitle {
+      font-size: 0.78rem;
+      color: #8e9bb0;
+    }
+
+    .camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 2px solid rgba(0, 215, 255, 0.35);
+      box-shadow: 0 0 30px rgba(0, 215, 255, 0.18);
+      margin: 14px 0;
+    }
+
+    video, img#snapPreview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .status-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 0.78rem;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff3b30;
+      box-shadow: 0 0 8px #ff3b30;
+    }
+
+    .status-dot.active {
+      background: #34c759;
+      box-shadow: 0 0 10px #34c759;
+    }
+
+    .status-dot.warning {
+      background: #ff9500;
+      box-shadow: 0 0 10px #ff9500;
+    }
+
+    .fps-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(0, 215, 255, 0.3);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #00d7ff;
+    }
+
+    .controls-panel {
+      width: 100%;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .settings-card {
+      background: rgba(14, 19, 31, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .select-group label {
+      font-size: 0.75rem;
+      color: #8e9bb0;
+      font-weight: 600;
+    }
+
+    select {
+      background: #0f1422;
+      color: #ffffff;
+      border: 1px solid rgba(0, 215, 255, 0.3);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      outline: none;
+      width: 100%;
+    }
+
+    select:focus {
+      border-color: #00d7ff;
+      box-shadow: 0 0 10px rgba(0, 215, 255, 0.3);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #007aff, #00d7ff);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(0, 122, 255, 0.4);
+    }
+
+    .btn-emerald {
+      background: linear-gradient(135deg, #34c759, #30d158);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(52, 199, 89, 0.4);
+    }
+
+    .btn-amber {
+      background: linear-gradient(135deg, #ff9500, #ffb340);
+      color: #111;
+      box-shadow: 0 0 15px rgba(255, 149, 0, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #f0f4fc;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .http-notice {
+      background: rgba(255, 149, 0, 0.1);
+      border: 1px solid rgba(255, 149, 0, 0.3);
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      color: #ffb340;
+      line-height: 1.5;
+    }
+
+    .copy-code {
+      background: rgba(0, 0, 0, 0.5);
+      color: #00d7ff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      word-break: break-all;
+      display: inline-block;
+      margin: 4px 0;
+    }
+
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📱 Camera & Webcam Ingest Feed</h1>
+    <p class="subtitle">AI Cinema Anti-Piracy • Developed by Instagram: @karanchintu664</p>
+  </header>
+
+  <div class="camera-container">
+    <video id="videoElement" autoplay playsinline muted></video>
+    <img id="snapPreview" style="display:none;" alt="Camera Snapshot Preview">
+    <div class="status-overlay">
+      <div id="statusDot" class="status-dot"></div>
+      <span id="statusText">READY TO STREAM</span>
+    </div>
+    <div id="fpsBadge" class="fps-badge">0 FPS</div>
+  </div>
+
+  <div class="controls-panel">
+
+    <div class="settings-card">
+      <div class="select-group">
+        <label for="cameraSelect">📷 Select Camera / Webcam Device:</label>
+        <select id="cameraSelect" onchange="switchSelectedCamera()"></select>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <div class="select-group" style="flex: 1;">
+          <label for="resSelect">📐 Stream Quality:</label>
+          <select id="resSelect" onchange="changeResolution()">
+            <option value="720p" selected>HD (1280x720)</option>
+            <option value="1080p">Full HD (1920x1080)</option>
+            <option value="480p">VGA (640x480 - High FPS)</option>
+          </select>
+        </div>
+        <button id="flipBtn" class="btn btn-secondary" style="align-self: flex-end; padding: 10px 16px;" onclick="flipCamera()">
+          <span>🔄</span> Flip Camera
+        </button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button id="startBtn" class="btn btn-primary" onclick="toggleCameraStream()">
+        <span>🎥</span> Start WebRTC Live Stream
+      </button>
+    </div>
+
+    <!-- HTTP Auto-Snap Continuous Mode Button -->
+    <button id="autoSnapBtn" class="btn btn-amber" onclick="toggleAutoSnapMode()">
+      <span>🔄📸</span> Start Auto-Snap Stream (Works over HTTP Wi-Fi)
+    </button>
+
+    <!-- Native Single Photo Upload -->
+    <button class="btn btn-emerald" onclick="document.getElementById('nativeCamInput').click()">
+      <span>📸</span> Snap & Upload Single Frame
+    </button>
+    <input type="file" id="nativeCamInput" accept="image/*" capture="environment" style="display:none;" onchange="handleNativeCapture(this)">
+
+    <div id="httpNotice" class="http-notice">
+      💡 <strong>HTTP Local Wi-Fi Guide:</strong><br>
+      • On mobile browsers over Wi-Fi, WebRTC video requires HTTPS or localhost.<br>
+      • Use <strong>"Auto-Snap Stream"</strong> or <strong>"Snap & Upload Single Frame"</strong> above for instant camera feeding over HTTP Wi-Fi!<br>
+      • <em>To unlock WebRTC on Chrome/Edge:</em> open <span class="copy-code">chrome://flags/#unsafely-treat-insecure-origin-as-secure</span> and add <span class="copy-code" id="currentOriginCode"></span>.
+    </div>
+
+  </div>
+
+  <canvas id="captureCanvas"></canvas>
+
+  <script>
+    let stream = null;
+    let ws = null;
+    let isStreaming = false;
+    let isAutoSnapping = false;
+    let autoSnapTimer = null;
+    let selectedDeviceId = null;
+    let facingMode = 'environment';
+    let streamInterval = null;
+    let frameCount = 0;
+    let fpsTimer = null;
+
+    const video = document.getElementById('videoElement');
+    const snapPreview = document.getElementById('snapPreview');
+    const canvas = document.getElementById('captureCanvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const autoSnapBtn = document.getElementById('autoSnapBtn');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const fpsBadge = document.getElementById('fpsBadge');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const currentOriginCode = document.getElementById('currentOriginCode');
+
+    currentOriginCode.textContent = window.location.origin;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await enumerateCameraDevices();
+    });
+
+    async function enumerateCameraDevices() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        cameraSelect.innerHTML = '<option value="">Integrated Camera / Default</option>';
+        return;
+      }
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+        cameraSelect.innerHTML = '';
+        if (videoDevices.length === 0) {
+          cameraSelect.innerHTML = '<option value="">Integrated Camera / Default</option>';
+          return;
+        }
+
+        videoDevices.forEach((device, idx) => {
+          const opt = document.createElement('option');
+          opt.value = device.deviceId;
+          opt.textContent = device.label || `Camera ${idx + 1} (${device.deviceId ? device.deviceId.substring(0, 6) : 'Default'})`;
+          cameraSelect.appendChild(opt);
+        });
+
+        if (videoDevices.length > 0) {
+          selectedDeviceId = videoDevices[0].deviceId;
+        }
+      } catch (err) {
+        console.warn("Could not enumerate camera devices:", err);
+        cameraSelect.innerHTML = '<option value="">Integrated Camera / Default</option>';
+      }
+    }
+
+    async function switchSelectedCamera() {
+      selectedDeviceId = cameraSelect.value;
+      if (isStreaming) {
+        stopStream();
+        await startStream();
+      } else if (isAutoSnapping) {
+        stopAutoSnapMode();
+        await startAutoSnapMode();
+      }
+    }
+
+    function changeResolution() {
+      if (isStreaming) {
+        stopStream();
+        startStream();
+      } else if (isAutoSnapping) {
+        stopAutoSnapMode();
+        startAutoSnapMode();
+      }
+    }
+
+    function getTargetDimensions() {
+      const res = document.getElementById('resSelect').value;
+      if (res === '1080p') return { w: 1920, h: 1080 };
+      if (res === '480p') return { w: 640, h: 480 };
+      return { w: 1280, h: 720 };
+    }
+
+    // Robust multi-fallback camera stream acquisition
+    async function acquireCameraStream(dim, devId, facing) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia not supported on this browser context");
+      }
+
+      const attempts = [];
+      if (devId) {
+        attempts.push({ deviceId: { exact: devId } });
+        attempts.push({ deviceId: devId });
+      }
+      attempts.push({ facingMode: facing, width: { ideal: dim.w }, height: { ideal: dim.h } });
+      attempts.push({ facingMode: facing });
+      attempts.push(true);
+
+      for (const constraint of attempts) {
+        try {
+          const s = await navigator.mediaDevices.getUserMedia({ video: constraint, audio: false });
+          if (s && s.getVideoTracks().length > 0) {
+            return s;
+          }
+        } catch (e) {
+          console.warn("Camera constraint attempt failed:", constraint, e);
+        }
+      }
+      throw new Error("Could not acquire camera stream with any constraint");
+    }
+
+    async function toggleCameraStream() {
+      if (isStreaming) {
+        stopStream();
+      } else {
+        if (isAutoSnapping) stopAutoSnapMode();
+        await startStream();
+      }
+    }
+
+    async function startStream() {
+      const dim = getTargetDimensions();
+      try {
+        statusText.textContent = "CONNECTING CAMERA...";
+        statusDot.className = "status-dot warning";
+
+        stream = await acquireCameraStream(dim, selectedDeviceId, facingMode);
+
+        snapPreview.style.display = 'none';
+        video.style.display = 'block';
+        video.srcObject = stream;
+        await video.play();
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/stream_input`;
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = "arraybuffer";
+
+        ws.onopen = () => {
+          isStreaming = true;
+          statusDot.className = 'status-dot active';
+          statusText.textContent = "STREAMING LIVE TO DASHBOARD";
+          startBtn.innerHTML = "<span>⏹</span> Stop Live Stream";
+          startBtn.style.background = "linear-gradient(135deg, #ff3b30, #b00020)";
+
+          frameCount = 0;
+          if (fpsTimer) clearInterval(fpsTimer);
+          fpsTimer = setInterval(() => {
+            fpsBadge.textContent = `${frameCount} FPS`;
+            frameCount = 0;
+          }, 1000);
+
+          streamInterval = setInterval(sendFrame, 50);
+        };
+
+        ws.onclose = () => { stopStream(); };
+        ws.onerror = (err) => {
+          console.error("WebSocket error:", err);
+          stopStream();
+        };
+
+      } catch (err) {
+        console.error("Camera access error:", err);
+        statusText.textContent = "WEBRTC BLOCKED (USE SNAP/HTTP)";
+        statusDot.className = "status-dot warning";
+        // Prompt single frame input without double alert loops
+        document.getElementById('nativeCamInput').click();
+      }
+    }
+
+    function sendFrame() {
+      if (!isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      canvas.width = 640;
+      canvas.height = 360;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (blob && ws && ws.readyState === WebSocket.OPEN) {
+          blob.arrayBuffer().then((buffer) => {
+            ws.send(buffer);
+            frameCount++;
+          });
+        }
+      }, 'image/jpeg', 0.65);
+    }
+
+    function stopStream() {
+      isStreaming = false;
+      if (streamInterval) clearInterval(streamInterval);
+      if (fpsTimer) clearInterval(fpsTimer);
+      if (ws) ws.close();
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      statusDot.className = 'status-dot';
+      statusText.textContent = "READY TO STREAM";
+      fpsBadge.textContent = "0 FPS";
+      startBtn.innerHTML = "<span>🎥</span> Start WebRTC Live Stream";
+      startBtn.style.background = "linear-gradient(135deg, #007aff, #00d7ff)";
+    }
+
+    async function flipCamera() {
+      facingMode = (facingMode === 'user') ? 'environment' : 'user';
+      selectedDeviceId = null;
+      if (isStreaming) {
+        stopStream();
+        await startStream();
+      } else if (isAutoSnapping) {
+        stopAutoSnapMode();
+        await startAutoSnapMode();
+      }
+    }
+
+    // Auto-Snap Continuous Stream Mode
+    async function toggleAutoSnapMode() {
+      if (isAutoSnapping) {
+        stopAutoSnapMode();
+      } else {
+        if (isStreaming) stopStream();
+        await startAutoSnapMode();
+      }
+    }
+
+    async function startAutoSnapMode() {
+      const dim = getTargetDimensions();
+      try {
+        stream = await acquireCameraStream(dim, selectedDeviceId, facingMode);
+        video.style.display = 'block';
+        snapPreview.style.display = 'none';
+        video.srcObject = stream;
+        await video.play();
+
+        isAutoSnapping = true;
+        statusDot.className = 'status-dot active';
+        statusText.textContent = "HTTP AUTO-SNAP ACTIVE";
+        autoSnapBtn.innerHTML = "<span>⏹</span> Stop Auto-Snap Stream";
+        autoSnapBtn.style.background = "linear-gradient(135deg, #ff3b30, #b00020)";
+
+        frameCount = 0;
+        if (fpsTimer) clearInterval(fpsTimer);
+        fpsTimer = setInterval(() => {
+          fpsBadge.textContent = `${frameCount} FPS`;
+          frameCount = 0;
+        }, 1000);
+
+        autoSnapTimer = setInterval(sendAutoSnapFrame, 350); // ~3 FPS continuous posting
+      } catch (err) {
+        console.error("Auto-snap stream error:", err);
+        statusText.textContent = "HTTP SNAP MODE (TAP SNAP BUTTON)";
+        statusDot.className = "status-dot warning";
+        document.getElementById('nativeCamInput').click();
+      }
+    }
+
+    function stopAutoSnapMode() {
+      isAutoSnapping = false;
+      if (autoSnapTimer) clearInterval(autoSnapTimer);
+      if (fpsTimer) clearInterval(fpsTimer);
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+      statusDot.className = 'status-dot';
+      statusText.textContent = "READY TO STREAM";
+      fpsBadge.textContent = "0 FPS";
+      autoSnapBtn.innerHTML = "<span>🔄📸</span> Start Auto-Snap Stream (Works over HTTP Wi-Fi)";
+      autoSnapBtn.style.background = "linear-gradient(135deg, #ff9500, #ffb340)";
+    }
+
+    function sendAutoSnapFrame() {
+      if (!isAutoSnapping || video.videoWidth === 0) return;
+      canvas.width = 640;
+      canvas.height = 360;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const formData = new FormData();
+        formData.append('file', blob, 'autosnap.jpg');
+        try {
+          await fetch('/api/upload_frame', { method: 'POST', body: formData });
+          frameCount++;
+        } catch (e) {
+          console.warn("Auto-snap upload error:", e);
+        }
+      }, 'image/jpeg', 0.65);
+    }
+
+    // Native Single Photo Upload
+    async function handleNativeCapture(inputEl) {
+      if (!inputEl.files || inputEl.files.length === 0) return;
+      const file = inputEl.files[0];
+
+      statusText.textContent = `UPLOADING FRAME (${file.name})...`;
+      statusDot.className = 'status-dot active';
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        snapPreview.src = e.target.result;
+        snapPreview.style.display = 'block';
+        video.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload_frame', { method: 'POST', body: formData });
+        if (res.ok) {
+          statusText.textContent = "FRAME SENT TO DETECTOR!";
+          setTimeout(() => {
+            if (!isStreaming && !isAutoSnapping) {
+              statusText.textContent = "READY TO STREAM";
+              statusDot.className = 'status-dot';
+            }
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("Failed to upload frame:", err);
+        statusText.textContent = "FRAME UPLOAD FAILED";
+        statusDot.className = 'status-dot';
+      }
+    }
+  </script>
+</body>
+</html>
