@@ -23,13 +23,13 @@ class BehaviorAnalyzer:
         aspect_ratio = h / w
 
         # Factor 1: Persistence Duration (40% Weight)
-        # 0 - 1.0s = low, 1.0 - 3.0s = ramping (casual check), > 3.0s = high (filming)
+        # Fast alert thresholding: 0-1s = casual check, 1-2.5s = ramping, > 2.5s = active filming alert
         if duration < 1.0:
-            duration_factor = (duration / 1.0) * 20.0
-        elif duration < settings.MIN_SUSPICIOUS_DURATION_SEC:
-            duration_factor = 20.0 + ((duration - 1.0) / (settings.MIN_SUSPICIOUS_DURATION_SEC - 1.0)) * 25.0
+            duration_factor = 25.0 + (duration / 1.0) * 20.0
+        elif duration < 2.5:
+            duration_factor = 45.0 + ((duration - 1.0) / 1.5) * 20.0
         else:
-            duration_factor = min(100.0, 70.0 + ((duration - settings.MIN_SUSPICIOUS_DURATION_SEC) / 3.0) * 30.0)
+            duration_factor = min(100.0, 70.0 + ((duration - 2.5) / 1.5) * 30.0)
 
         # Factor 2: Screen-Facing Orientation (25% Weight)
         # Recording stance: phone held upright portrait (ratio 1.2 - 2.6) or landscape (0.45 - 0.8)
