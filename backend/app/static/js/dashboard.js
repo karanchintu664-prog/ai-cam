@@ -212,10 +212,13 @@ async function switchFeedMode(mode) {
     document.getElementById('btnModeSim').classList.add('active');
     document.getElementById('activeSourceText').textContent = 'SYNTHETIC SIMULATOR';
   } else if (mode === 'webcam') {
-    if (webcamSelect) webcamSelect.style.display = 'inline-block';
+    if (webcamSelect) {
+      webcamSelect.style.display = 'inline-block';
+      // Default to In-Browser Webcam on web deployments
+      webcamSelect.value = 'browser';
+    }
     document.getElementById('btnModeWebcam').classList.add('active');
-    const currentVal = webcamSelect ? webcamSelect.value : 'server_0';
-    await changeWebcamSource(currentVal);
+    await changeWebcamSource('browser');
   } else if (mode === 'file') {
     if (webcamSelect) webcamSelect.style.display = 'none';
     stopBrowserWebcam();
