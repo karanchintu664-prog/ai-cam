@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Cinema Anti-Piracy System | Staff Monitoring Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <h1>AI-Based Cinema Theatre Anti-Piracy Monitoring System</h1>
+        <p>Developed by Instagram: @karanchintu664 • Computer Vision & Alert System</p>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <button id="audioToggleBtn" class="audio-toggle-btn" onclick="toggleAudio()">
+        <span id="audioIcon">🔊</span>
+        <span id="audioStatusText">Audio: ON</span>
+      </button>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="systemStatusText">SYSTEM ACTIVE & MONITORING</span>
+      </div>
+      <div id="liveClock" style="font-family: var(--font-display); font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">
+        12:00:00 PM
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-container">
+
+    <!-- Floating Live Alert Banner -->
+    <div id="alertBanner" class="alert-banner">
+      <div class="alert-banner-text">
+        <h4 id="bannerTitle">⚠ Suspicious Recording Activity Detected</h4>
+        <p id="bannerDetail">Seat C14 | Suspicion Score: 88% | Duration: 4.2s — Requires Staff Verification</p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-ctrl active" onclick="inspectCurrentBannerAlert()">Inspect Evidence</button>
+        <button class="btn-ctrl" onclick="dismissBanner()">Acknowledge</button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Row -->
+    <section class="kpi-grid">
+      <div class="kpi-card" onclick="setAlertFilter('Requires Staff Verification')" style="cursor: pointer;">
+        <div class="kpi-info">
+          <h3>Pending Verification</h3>
+          <div class="kpi-value" id="kpiPending">0</div>
+        </div>
+        <div class="kpi-icon alert-red">⚠</div>
+      </div>
+      <div class="kpi-card" onclick="setAlertFilter('Confirmed Suspicious')" style="cursor: pointer;">
+        <div class="kpi-info">
+          <h3>Confirmed Incidents</h3>
+          <div class="kpi-value" id="kpiConfirmed">0</div>
+        </div>
+        <div class="kpi-icon amber">🛡</div>
+      </div>
+      <div class="kpi-card" onclick="setAlertFilter('False Alarm')" style="cursor: pointer;">
+        <div class="kpi-info">
+          <h3>False Alarms</h3>
+          <div class="kpi-value" id="kpiFalse">0</div>
+        </div>
+        <div class="kpi-icon emerald">✓</div>
+      </div>
+      <div class="kpi-card" onclick="setAlertFilter('all')" style="cursor: pointer;">
+        <div class="kpi-info">
+          <h3>Total Incidents</h3>
+          <div class="kpi-value" id="kpiTotal">0</div>
+        </div>
+        <div class="kpi-icon blue">📊</div>
+      </div>
+    </section>
+
+    <!-- Main Dual Grid: Camera Feed & Seating Map -->
+    <section class="main-content-grid">
+
+      <!-- Left Column: Camera Viewport -->
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>📹</span> Live Theatre Camera Stream
+          </div>
+          <div class="panel-controls">
+            <span style="font-size: 0.72rem; color: var(--text-muted); align-self: center; margin-right: 2px;">Input Source:</span>
+            <button class="btn-ctrl active" id="btnModeSim" onclick="switchFeedMode('simulator')">Simulator Feed</button>
+            <button class="btn-ctrl" id="btnModeWebcam" onclick="switchFeedMode('webcam')">📷 Live Webcam</button>
+            <select id="webcamSelect" style="display:none; background:#0f1422; color:#00d7ff; border:1px solid rgba(0,215,255,0.4); padding:5px 8px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;" onchange="changeWebcamSource(this.value)">
+              <option value="server_0" selected>Server Webcam (Index 0)</option>
+              <option value="server_1">Server Webcam (Index 1)</option>
+              <option value="server_2">Server Webcam (Index 2)</option>
+              <option value="browser">In-Browser Webcam</option>
+            </select>
+            <button class="btn-ctrl" id="btnModeFile" onclick="triggerVideoUpload()">📁 Upload Video</button>
+            <button class="btn-ctrl" id="btnModePhone" onclick="openPhoneCameraModal()">📱 Phone Camera Streamer</button>
+            <input type="file" id="videoFileInput" accept="video/*" style="display:none;" onchange="uploadVideoFile(this)">
+          </div>
+        </div>
+
+        <div class="video-viewport">
+          <img id="videoFeedImg" src="/video_feed" class="video-stream-img" alt="Live Anti-Piracy Camera Feed">
+          <video id="browserWebcamVideo" autoplay playsinline muted style="display:none; width:100%; height:100%; object-fit:cover;"></video>
+          <canvas id="browserWebcamCanvas" style="display:none;"></canvas>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+          <div class="scenario-bar" style="display: flex; gap: 6px; align-items: center;">
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Simulator Scenarios:</span>
+            <button class="btn-ctrl active" id="btnScenarioRec" onclick="setScenario('recording_attempt')">Filming Attempt (Seat C14)</button>
+            <button class="btn-ctrl" id="btnScenarioCasual" onclick="setScenario('casual_phone')">Casual Phone</button>
+            <button class="btn-ctrl" id="btnScenarioNormal" onclick="setScenario('normal')">Normal Crowd</button>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">
+            Active Source: <strong id="activeSourceText" style="color: var(--accent-cyan);">SYNTHETIC SIMULATOR</strong>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+          <span>Target Model: <strong>YOLO / OpenCV Object Detector</strong></span>
+          <span>Privacy Mode: <strong>ANONYMIZED TELEMETRY (NO FACIAL RECOGNITION)</strong></span>
+        </div>
+      </div>
+
+      <!-- Right Column: Interactive Seating Map & 3D Projection -->
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>💺</span> Theatre Seating Layout & Spatial Status
+          </div>
+          <div class="panel-controls">
+            <button class="btn-ctrl active" id="btnView2D" onclick="switchSeatingView('2D')">💺 2D Map</button>
+            <button class="btn-ctrl" id="btnView3D" onclick="switchSeatingView('3D')">🎮 3D Spatial Projection</button>
+            <button class="btn-ctrl" id="btnEditSeats" onclick="openSeatEditorModal()">✏ Edit Seats</button>
+          </div>
+        </div>
+
+        <!-- 2D View Container -->
+        <div id="seating2DContainer">
+          <div class="screen-indicator">CINEMA SCREEN DIRECTION</div>
+          <div id="seatingGrid" class="seating-grid">
+            <!-- Dynamically generated seats -->
+          </div>
+        </div>
+
+        <!-- 3D View Container -->
+        <div id="seating3DContainer" style="display:none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; gap: 6px;">
+              <button class="btn-ctrl active" id="btn3DAngleSecurity" onclick="set3DCameraAngle('security')">📹 Security Overhead</button>
+              <button class="btn-ctrl" id="btn3DAngleAudience" onclick="set3DCameraAngle('audience')">🍿 Audience View</button>
+              <button class="btn-ctrl" id="btn3DAngleStage" onclick="set3DCameraAngle('stage')">🎬 Stage View</button>
+            </div>
+            <button class="btn-ctrl" id="btn3DAutoRotate" onclick="toggle3DAutoRotate()">🔄 Auto-Rotate 3D</button>
+          </div>
+
+          <div id="canvas3DHolder" style="position: relative; width: 100%; aspect-ratio: 16 / 10; background: #04060a; border-radius: 12px; border: 1px solid rgba(0, 215, 255, 0.25); overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+            <canvas id="theater3DCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+            <div id="overlay3DHint" style="position: absolute; bottom: 8px; left: 12px; font-size: 0.72rem; color: rgba(255,255,255,0.6); pointer-events: none;">
+              💡 <em>Drag to rotate 3D angle • Scroll to zoom • Right-click to pan</em>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid var(--border-card); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h5 style="font-size: 0.78rem; margin-bottom: 2px; color: var(--text-main);">Spatial Seat Assignment</h5>
+            <p style="font-size: 0.72rem; color: var(--text-muted);">
+              Detections map to 2D coordinates & 3D volumetric theater frustum projection.
+            </p>
+          </div>
+          <span style="font-size: 0.7rem; color: #34c759;">■ Normal</span>
+          <span style="font-size: 0.7rem; color: #ff9500; margin-left: 4px;">■ Phone</span>
+          <span style="font-size: 0.7rem; color: #ff3b30; margin-left: 4px;">■ Piracy Alert</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Alert History Table -->
+    <section class="glass-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📋</span> Incident Alert Log & Verification Workflow
+        </div>
+        <div class="panel-controls">
+          <div class="filter-tabs">
+            <button class="tab-btn active" data-filter="all" onclick="setAlertFilter('all')">All Incidents</button>
+            <button class="tab-btn" data-filter="Requires Staff Verification" onclick="setAlertFilter('Requires Staff Verification')">Pending</button>
+            <button class="tab-btn" data-filter="Confirmed Suspicious" onclick="setAlertFilter('Confirmed Suspicious')">Confirmed</button>
+            <button class="tab-btn" data-filter="False Alarm" onclick="setAlertFilter('False Alarm')">False Alarms</button>
+            <button class="tab-btn" data-filter="Reviewed" onclick="setAlertFilter('Reviewed')">Reviewed</button>
+          </div>
+          <button class="btn-ctrl" onclick="loadAlerts()">Refresh Log</button>
+        </div>
+      </div>
+
+      <div class="alert-table-container">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Snapshot Evidence</th>
+              <th>Alert UUID</th>
+              <th>Timestamp</th>
+              <th>Seat ID</th>
+              <th>Suspicion Score</th>
+              <th>Duration</th>
+              <th>Analytical Reason</th>
+              <th>Status</th>
+              <th>Staff Verification Action</th>
+            </tr>
+          </thead>
+          <tbody id="alertTableBody">
+            <!-- Dynamic Alert Rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer Privacy Statement -->
+    <footer style="text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-top: 20px; padding-bottom: 20px;">
+      AI-Based Cinema Theatre Anti-Piracy Monitoring System • Designed for Academic Research & Demonstration • Compliant with Privacy-First Directives
+    </footer>
+
+  </main>
+
+  <!-- Snapshot & Telemetry Lightbox Modal -->
+  <div id="evidenceModal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle"><span>📸</span> Incident Snapshot Evidence & Telemetry</h3>
+        <button class="btn-close-modal" onclick="closeEvidenceModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-snapshot-container">
+          <img id="modalImage" src="" alt="Snapshot Frame Evidence" class="modal-snapshot-img">
+          <div id="modalNoImage" class="modal-no-img" style="display:none;">No Snapshot Image Available</div>
+        </div>
+        <div class="modal-telemetry-panel">
+          <div class="telemetry-item">
+            <span class="telemetry-label">Seat Location:</span>
+            <span id="modalSeatId" class="telemetry-value highlight-red">Seat C14</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Suspicion Score:</span>
+            <span id="modalScore" class="telemetry-value highlight-amber">88%</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Persistence Duration:</span>
+            <span id="modalDuration" class="telemetry-value">4.2s</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Detection Confidence:</span>
+            <span id="modalConfidence" class="telemetry-value">92%</span>
+          </div>
+          <div class="telemetry-item" style="flex-direction: column; align-items: flex-start;">
+            <span class="telemetry-label">Analytical Rationale:</span>
+            <p id="modalReason" class="telemetry-desc">Continuous screen-oriented phone usage (4.2s) with stable recording posture.</p>
+          </div>
+          <div class="modal-action-bar">
+            <button class="btn-ctrl active" onclick="verifyCurrentModalAlert('Confirmed Suspicious')">Confirm Suspicious</button>
+            <button class="btn-ctrl" onclick="verifyCurrentModalAlert('False Alarm')">Flag False Alarm</button>
+            <button class="btn-ctrl" onclick="verifyCurrentModalAlert('Reviewed')">Mark Reviewed</button>
+          </div>
+        </div>
+      </div>
+  <!-- Phone Camera Pairing Modal -->
+  <div id="phoneModal" class="modal-overlay" onclick="closePhoneModalOnOverlay(event)">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3><span>📱</span> Live Phone Camera Streamer Setup</h3>
+        <button class="btn-close-modal" onclick="closePhoneModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="grid-template-columns: 1fr; gap: 16px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+          Stream live video directly from your mobile phone or secondary device into the anti-piracy detector:
+        </p>
+
+        <div style="background: rgba(0, 215, 255, 0.08); padding: 14px; border-radius: 10px; border: 1px solid rgba(0, 215, 255, 0.2);">
+          <h5 style="font-size: 0.8rem; color: var(--accent-cyan); margin-bottom: 6px;">Step 1: Open Camera Page on Phone</h5>
+          <p style="font-size: 0.78rem; color: var(--text-main); margin-bottom: 8px;">
+            Open your phone's web browser and navigate to:
+          </p>
+          <div style="font-family: monospace; font-size: 0.9rem; font-weight: 700; color: #fff; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 6px;">
+            <a id="phoneIpLink" href="/camera" target="_blank" style="color: var(--accent-cyan); text-decoration: none;">http://127.0.0.1:8000/camera</a>
+          </div>
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">
+            Or click <a href="/camera" target="_blank" style="color: var(--accent-blue);">Open Camera Streamer in new tab</a> for laptop webcam testing.
+          </p>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.03); padding: 14px; border-radius: 10px; border: 1px solid var(--border-card);">
+          <h5 style="font-size: 0.8rem; color: var(--text-main); margin-bottom: 6px;">Step 2: Start Streaming & Testing</h5>
+          <ol style="font-size: 0.76rem; color: var(--text-muted); padding-left: 18px; line-height: 1.6;">
+            <li>Tap <strong>"Start Live Stream"</strong> on your phone.</li>
+            <li>Point your phone camera at a room/desk.</li>
+            <li>If audience persons are visible, seat zones (e.g. <code>Seat A1</code>) are <strong>auto-detected</strong> dynamically!</li>
+            <li>Hold up a phone in front of the camera to test instant recording detection & alert triggering!</li>
+          </ol>
+        </div>
+
+  <!-- Interactive Seating Arrangement Editor Modal -->
+  <div id="seatEditorModal" class="modal-overlay" onclick="closeSeatEditorOnOverlay(event)">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3><span>✏</span> Theater Seating Layout & Spatial Bounds Editor</h3>
+        <button class="btn-close-modal" onclick="closeSeatEditorModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="grid-template-columns: 1fr; gap: 16px; max-height: 75vh; overflow-y: auto;">
+        
+        <!-- Batch Layout Generator -->
+        <div style="background: rgba(0, 215, 255, 0.08); padding: 14px; border-radius: 12px; border: 1px solid rgba(0, 215, 255, 0.25);">
+          <h5 style="font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 8px;">📐 Quick Seating Grid Generator</h5>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Row Labels (comma-separated):</label>
+              <input type="text" id="editRowLabels" value="A, B, C, D" style="width: 100%; background: #0f1422; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px; border-radius: 6px; margin-top: 4px;">
+            </div>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Seats Per Row:</label>
+              <input type="number" id="editSeatsPerRow" value="14" min="1" max="25" style="width: 100%; background: #0f1422; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px; border-radius: 6px; margin-top: 4px;">
+            </div>
+          </div>
+          <button class="btn-ctrl active" style="margin-top: 10px; width: 100%; text-align: center;" onclick="applyBatchSeatConfiguration()">🚀 Generate & Apply Theater Layout</button>
+        </div>
+
+        <!-- Single Seat Manual Addition -->
+        <div style="background: rgba(255, 255, 255, 0.03); padding: 14px; border-radius: 12px; border: 1px solid var(--border-card);">
+          <h5 style="font-size: 0.85rem; color: var(--text-main); margin-bottom: 8px;">➕ Add or Update Individual Seat</h5>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+            <input type="text" id="manualSeatId" placeholder="Seat ID (e.g. E1)" style="background: #0f1422; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px; border-radius: 6px;">
+            <input type="text" id="manualRowLabel" placeholder="Row (e.g. E)" style="background: #0f1422; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px; border-radius: 6px;">
+            <input type="number" id="manualSeatNum" placeholder="Number (e.g. 1)" style="background: #0f1422; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px; border-radius: 6px;">
+          </div>
+          <button class="btn-ctrl" style="margin-top: 8px; width: 100%; text-align: center;" onclick="addSingleSeatManual()">Add Seat</button>
+        </div>
+
+        <!-- Seat List Table -->
+        <div>
+          <h5 style="font-size: 0.82rem; color: var(--text-main); margin-bottom: 6px;">Current Theater Seats (<span id="seatCountText">0</span> total):</h5>
+          <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-card); border-radius: 8px;">
+            <table class="custom-table" style="font-size: 0.78rem;">
+              <thead>
+                <tr>
+                  <th>Seat ID</th>
+                  <th>Row</th>
+                  <th>Seat #</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="seatEditorTableBody">
+                <!-- Dynamic Seat Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <button class="btn-ctrl active" onclick="closeSeatEditorModal()" style="padding: 10px; text-align: center;">Done Editing</button>
+      </div>
+    </div>
+  </div>
+
+  <footer style="text-align: center; padding: 16px 0; font-size: 0.8rem; color: #8e9bb0; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 20px;">
+    System Engine & Design • Developed by <strong>Instagram: @karanchintu664</strong>
+  </footer>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
